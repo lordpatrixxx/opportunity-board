@@ -11,13 +11,24 @@ export interface Category {
 }
 
 interface CategoryStripProps {
-  categories: Category[];
+  categories?: Category[];
   selectedCategory: string; // slug or 'all'
   onSelectCategory: (slug: string) => void;
 }
 
+export const DEFAULT_CATEGORIES: Category[] = [
+  { id: 'cat-1', name: 'Internships', slug: 'internships', icon: 'work' },
+  { id: 'cat-2', name: 'Hackathons', slug: 'hackathons', icon: 'code_blocks' },
+  { id: 'cat-3', name: 'Fellowships', slug: 'fellowships', icon: 'biotech' },
+  { id: 'cat-4', name: 'Workshops', slug: 'workshops', icon: 'handyman' },
+  { id: 'cat-5', name: 'Competitions', slug: 'competitions', icon: 'emoji_events' },
+  { id: 'cat-6', name: 'Scholarships', slug: 'scholarships', icon: 'school' },
+  { id: 'cat-7', name: 'Early Jobs', slug: 'early-jobs', icon: 'rocket_launch' },
+  { id: 'cat-8', name: 'Conferences', slug: 'conferences', icon: 'groups' },
+];
+
 export default function CategoryStrip({
-  categories,
+  categories = [],
   selectedCategory,
   onSelectCategory,
 }: CategoryStripProps) {
@@ -28,30 +39,33 @@ export default function CategoryStrip({
     icon: 'dashboard',
   };
 
-  const list = [allCategoryItem, ...categories];
+  const activeCategories = categories && categories.length > 0 ? categories : DEFAULT_CATEGORIES;
+  const list = [allCategoryItem, ...activeCategories];
 
   return (
-    <div className="w-full bg-surface-container-lowest border-b border-outline-variant/30 sticky top-16 z-40">
-      <div className="max-w-7xl mx-auto px-gutter-mobile lg:px-margin-desktop py-space-xs">
-        <div className="flex items-center gap-space-xs overflow-x-auto no-scrollbar scroll-smooth py-1">
+    <div className="w-full bg-surface-container-lowest border-b border-outline-variant/30 py-3">
+      <div className="max-w-7xl mx-auto px-gutter-mobile lg:px-margin-desktop">
+        {/* Wrap layout without sliding/scrolling */}
+        <div className="flex flex-wrap items-center gap-2">
           {list.map((cat) => {
             const isSelected =
               selectedCategory === cat.slug ||
-              (!selectedCategory && cat.slug === 'all');
+              (!selectedCategory && cat.slug === 'all') ||
+              (selectedCategory === 'all' && cat.slug === 'all');
 
             return (
               <button
                 key={cat.id}
                 type="button"
                 onClick={() => onSelectCategory(cat.slug)}
-                className={`flex-shrink-0 flex items-center gap-space-2xs px-space-sm py-2 rounded-xl text-xs font-bold transition-all ${
+                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   isSelected
-                    ? 'bg-primary-container text-on-primary shadow-xs'
-                    : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface border border-outline-variant/30'
+                    ? 'bg-primary text-white shadow-xs scale-[1.02]'
+                    : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container hover:text-on-surface border border-outline-variant/30'
                 }`}
               >
                 {cat.icon && (
-                  <span className="material-symbols-outlined text-[18px]">
+                  <span className="material-symbols-outlined text-[17px]">
                     {cat.icon}
                   </span>
                 )}
