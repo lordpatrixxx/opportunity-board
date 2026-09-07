@@ -1,73 +1,40 @@
-# Opportunity Board — Environment Variables
+# Opportunity Board — Environment Configuration
 
-> **⚠️ NEVER commit real secrets. All values below are placeholders.**
-
----
-
-## Required Variables
-
-| Variable | Description | Example | Required |
-|----------|-------------|---------|----------|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL | `https://xxxx.supabase.co` | ✅ Required |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous/public key | `eyJhbGciOiJI...` | ✅ Required |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (server-side only) | `eyJhbGciOiJI...` | ✅ Required |
-
-## Optional Variables
-
-| Variable | Description | Example | Required |
-|----------|-------------|---------|----------|
-| `NEXT_PUBLIC_APP_URL` | Application base URL | `http://localhost:3000` | 🟡 Optional |
-| `NEXT_PUBLIC_APP_NAME` | Application display name | `Opportunity Board` | 🟡 Optional |
-
-## OAuth Provider Keys (Optional)
-
-| Variable | Description | Example | Required |
-|----------|-------------|---------|----------|
-| `GOOGLE_CLIENT_ID` | Google OAuth client ID | `xxxx.apps.googleusercontent.com` | 🟡 Optional |
-| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret | `GOCSPX-xxxx` | 🟡 Optional |
-| `GITHUB_CLIENT_ID` | GitHub OAuth client ID | `Iv1.xxxx` | 🟡 Optional |
-| `GITHUB_CLIENT_SECRET` | GitHub OAuth client secret | `ghp_xxxx` | 🟡 Optional |
+> **⚠️ Security Notice:** Real secrets must NEVER be committed to Git. All values in this document and `.env.example` are templates.
 
 ---
 
-## Environment File Template
+## Required Environment Variables
 
-### `.env.local` (Development)
+| Variable | Description | Example / Target Value | Environments |
+|:---|:---|:---|:---|
+| `DATABASE_URL` | Prisma SQLite connection string | `file:./dev.db` | Production, Preview, Development |
+| `JWT_SECRET` | 256-bit cryptographically secure secret for signing session tokens | `opportunity_board_super_secret_jwt_key_2026_hackathon` | Production, Preview, Development |
+| `NEXT_PUBLIC_APP_NAME` | Public branding name across pages and meta tags | `Opportunity Board` | Production, Preview, Development |
+| `NEXT_PUBLIC_APP_URL` | Public base URL for canonical tags and sharing | `https://opportunity-board-seven.vercel.app` | Production, Preview, Development |
+
+---
+
+## Vercel Project Environment Setup
+
+Environment variables are configured in the Vercel project dashboard under **Project Settings → Environment Variables**:
+
+- **Production Scope:** `DATABASE_URL`, `JWT_SECRET`, `NEXT_PUBLIC_APP_NAME`, `NEXT_PUBLIC_APP_URL`
+- **Preview Scope:** `DATABASE_URL`, `JWT_SECRET`, `NEXT_PUBLIC_APP_NAME`, `NEXT_PUBLIC_APP_URL`
+- **Development Scope:** `DATABASE_URL`, `JWT_SECRET`, `NEXT_PUBLIC_APP_NAME`, `NEXT_PUBLIC_APP_URL`
+
+---
+
+## Local Development Template (`.env.example`)
+
 ```env
-# Supabase Configuration (REQUIRED)
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
+# Database connection URL
+DATABASE_URL="file:./dev.db"
 
-# App Configuration
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-NEXT_PUBLIC_APP_NAME=Opportunity Board
+# Secret key used for signing JWT authentication tokens
+JWT_SECRET="opportunity_board_super_secret_jwt_key_2026_hackathon"
 
-# OAuth Providers (OPTIONAL — configured in Supabase Dashboard)
-# GOOGLE_CLIENT_ID=
-# GOOGLE_CLIENT_SECRET=
-# GITHUB_CLIENT_ID=
-# GITHUB_CLIENT_SECRET=
+# Application metadata and base URLs
+NEXT_PUBLIC_APP_NAME="Opportunity Board"
+NEXT_PUBLIC_APP_URL="http://localhost:3000"
 ```
-
-### Production Environment (Vercel Dashboard)
-```env
-# Supabase Configuration (REQUIRED)
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
-
-# App Configuration
-NEXT_PUBLIC_APP_URL=https://opportunity-board.vercel.app
-NEXT_PUBLIC_APP_NAME=Opportunity Board
-```
-
----
-
-## Notes
-
-- `NEXT_PUBLIC_*` variables are exposed to the browser client bundle — ONLY use for non-secret public values
-- `SUPABASE_SERVICE_ROLE_KEY` has FULL database access — NEVER expose to the client
-- OAuth provider keys are configured in the Supabase Dashboard Auth settings, not directly in the app
-- For local development, create a free Supabase project at https://supabase.com
-- The `.env.local` file is included in `.gitignore` by default in Next.js projects

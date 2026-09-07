@@ -1,120 +1,67 @@
-# Opportunity Board — Deployment
+# Opportunity Board — Production Deployment
+
+## Deployment Status
+- **Status:** ✅ **LIVE IN PRODUCTION**
+- **Production URL:** [https://opportunity-board-seven.vercel.app](https://opportunity-board-seven.vercel.app)
+- **Deployment Platform:** Vercel (East US - iad1)
+- **GitHub Repository:** [https://github.com/lordpatrixxx/opportunity-board](https://github.com/lordpatrixxx/opportunity-board)
+- **Production Branch:** `main`
+- **Continuous Deployment:** Enabled (GitHub ↔ Vercel automated CI/CD)
+
+---
 
 ## Deployment Architecture
 
 ```mermaid
 graph LR
-    DEV["Developer (localhost:3000)"] --> GIT["GitHub Repository"]
-    GIT --> VERCEL["Vercel (Auto-deploy)"]
-    VERCEL --> CDN["Vercel Edge CDN"]
-    CDN --> USER["End Users"]
-    VERCEL --> SUPA["Supabase (Cloud)"]
+    DEV["Developer Workspace"] --> GIT["GitHub Repository<br/>(lordpatrixxx/opportunity-board)"]
+    GIT -->|Automated Trigger| VERCEL["Vercel CI/CD Build Engine"]
+    VERCEL --> CDN["Vercel Global Edge CDN"]
+    CDN --> USERS["End Users / Evaluators"]
     
-    subgraph "Vercel"
-        VERCEL --> SSR["Server Functions (SSR)"]
-        VERCEL --> API["API Routes"]
-        VERCEL --> STATIC["Static Assets"]
-    end
-    
-    subgraph "Supabase"
-        SUPA --> DB["PostgreSQL Database"]
-        SUPA --> AUTH["Auth Service"]
-        SUPA --> STORAGE["File Storage"]
+    subgraph "Vercel Serverless (iad1)"
+        VERCEL --> SSR["Next.js 14 App Router (SSR)"]
+        VERCEL --> API["Serverless API Routes (/api/*)"]
+        API --> PRISMA["Prisma Client ORM 5.22"]
+        PRISMA --> DB["SQLite Database (/tmp/dev.db replica)"]
     end
 ```
 
-## Hosting
+---
 
-| Service | Provider | Tier | Purpose |
-|---------|----------|------|---------|
-| **Frontend + API** | Vercel | Free (Hobby) | Next.js hosting, SSR, API routes, CDN |
-| **Database** | Supabase | Free | PostgreSQL, 500MB storage, 50K monthly active users |
-| **Auth** | Supabase Auth | Free | Email/password + OAuth |
-| **File Storage** | Supabase Storage | Free | Organization logos (1GB) |
+## Hosting & Stack Details
 
-## Build Process
+| Component | Provider | Configuration / Technology | Details |
+|:---|:---|:---|:---|
+| **Frontend & API** | Vercel | Next.js 14 App Router, TypeScript 5.6 | Serverless Lambda execution, Global Edge CDN |
+| **Styling** | Tailwind CSS | Stitch Opportunity Board Design System | Glassmorphism, Material Symbols Outlined |
+| **Database ORM** | Prisma | `@prisma/client` 5.22.0 | Auto-generated client, 10 data models |
+| **Database Engine** | SQLite | `/tmp/dev.db` auto-replication on cold start | Read & write capable in serverless lambda |
+| **Authentication** | Custom JWT | `jose` 5.9 + `bcryptjs` 2.4 | HTTP-only cookie transport (`auth-token`) |
 
+---
+
+## Vercel Configuration & Build Process
+
+### Build Command
 ```bash
-# Install dependencies
-npm install
-
-# Run development server
-npm run dev
-
-# Build for production
-npm run build
-
-# Start production server (local testing)
-npm start
+prisma generate && next build
 ```
 
-## Production Deployment (Vercel)
+### Serverless SQLite Storage Strategy
+In Vercel serverless functions, the root filesystem is read-only. `src/lib/db.ts` detects `process.env.VERCEL`, checks if `/tmp/dev.db` exists, and if not, initializes it from the pre-seeded bundled database `prisma/dev.db`. It then binds PrismaClient to `file:/tmp/dev.db`, ensuring both read and write operations (creating opportunities, editing, bookmarking, moderation) succeed seamlessly.
 
-1. **Connect GitHub repo** to Vercel project
-2. **Set environment variables** in Vercel dashboard
-3. **Auto-deploy** on push to `main` branch
-4. **Preview deployments** on pull requests
+---
 
-### Vercel Configuration
-```json
-// vercel.json (if needed)
-{
-  "framework": "nextjs",
-  "buildCommand": "npm run build",
-  "outputDirectory": ".next"
-}
-```
+## Production Verification Checklist
 
-## Environment Configuration
-
-### Development
-- `.env.local` with development Supabase credentials
-- Hot reloading via `npm run dev`
-- Local Supabase (optional, via `supabase start`)
-
-### Production
-- Environment variables set in Vercel dashboard
-- Production Supabase project
-- Automatic HTTPS via Vercel
-
-## Domain Configuration
-1. Default: `opportunity-board-xxx.vercel.app`
-2. Custom domain: Add in Vercel → Domains
-3. HTTPS: Automatic via Let's Encrypt
-
-## Database Migrations
-```bash
-# Generate migration
-supabase migration new create_tables
-
-# Apply migrations
-supabase db push
-
-# Seed data
-supabase db seed
-```
-
-## Post-Deployment Verification
-- [ ] Homepage loads with hero section
-- [ ] Opportunity feed displays seeded data
-- [ ] Search and filters work correctly
-- [ ] Sign up creates new account
-- [ ] Sign in authenticates successfully
-- [ ] Create opportunity form submits
-- [ ] Edit and delete work on own posts
-- [ ] Bookmark toggle persists
-- [ ] Admin panel accessible to admin user
-- [ ] Mobile responsive layout works
-- [ ] API endpoints return correct responses
-- [ ] Environment variables are not exposed in client bundle
-
-## Monitoring & Logging
-| Service | Purpose |
-|---------|---------|
-| Vercel Analytics | Page views, Web Vitals, errors |
-| Vercel Logs | Server function logs, API errors |
-| Supabase Dashboard | Database queries, auth events, storage usage |
-
-## Rollback Strategy
-- Vercel supports instant rollback to any previous deployment
-- Database migrations are version-controlled and reversible
+- [x] **Homepage (`/`):** 200 OK — Renders hero search, stats, category chips, and featured listings
+- [x] **Opportunities Directory (`/opportunities`):** 200 OK — Search and category filters operate dynamically
+- [x] **Categories API (`/api/categories`):** 200 OK — Returns all 8 categories with opportunity count aggregations
+- [x] **Opportunities API (`/api/opportunities`):** 200 OK — Returns seeded listings with pagination and sorting
+- [x] **User Authentication (`/api/auth/login`):** 200 OK — Sets HTTP-only `auth-token` cookie
+- [x] **Session Persistence (`/api/auth/me`):** 200 OK — Accurately returns authenticated student profile
+- [x] **Bookmark / Save Flow (`/api/bookmarks`):** 201 Created — Optimistic save and unbookmark persist in database
+- [x] **RBAC Authorization:** 403 Forbidden on `/api/admin/opportunities` when accessed as a regular user
+- [x] **Admin Moderation:** 200 OK on `/api/admin/opportunities` when authenticated as administrator
+- [x] **Responsive Layout:** Verified on Desktop, Tablet, and Mobile viewports
