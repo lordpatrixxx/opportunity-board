@@ -80,7 +80,7 @@ export default function Footer() {
             <Link href="/notifications" className="font-body-sm text-body-sm hover:text-primary transition-colors">
               Notifications
             </Link>
-            <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="font-body-sm text-body-sm hover:text-primary transition-colors">
+            <a href="https://github.com/lordpatrixxx/opportunity-board" target="_blank" rel="noopener noreferrer" className="font-body-sm text-body-sm hover:text-primary transition-colors">
               GitHub Repository
             </a>
           </div>
