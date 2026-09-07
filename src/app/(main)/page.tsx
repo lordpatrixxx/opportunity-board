@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import HeroSearch from '@/components/opportunities/HeroSearch';
-import CategoryStrip, { Category } from '@/components/opportunities/CategoryStrip';
 import FilterPanel, { FilterState } from '@/components/opportunities/FilterPanel';
 import SortDropdown from '@/components/opportunities/SortDropdown';
 import OpportunityCard from '@/components/opportunities/OpportunityCard';
@@ -12,7 +11,6 @@ import { Opportunity } from '@/types';
 
 export default function HomePage() {
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -32,22 +30,6 @@ export default function HomePage() {
     paidOnly: false,
     urgentOnly: false,
   });
-
-  // Fetch categories once on mount
-  useEffect(() => {
-    async function loadCategories() {
-      try {
-        const res = await fetch('/api/categories');
-        const data = await res.json();
-        if (data.categories) {
-          setCategories(data.categories);
-        }
-      } catch (err) {
-        console.error('Failed to load categories', err);
-      }
-    }
-    loadCategories();
-  }, []);
 
   // Fetch opportunities whenever query params or page change
   const fetchOpportunities = useCallback(async () => {
@@ -158,14 +140,7 @@ export default function HomePage() {
         onQuickFilter={handleQuickFilter}
       />
 
-      {/* 2. Category Strip */}
-      <CategoryStrip
-        categories={categories}
-        selectedCategory={selectedCategory}
-        onSelectCategory={handleCategorySelect}
-      />
-
-      {/* 3. Main Discovery Feed Area */}
+      {/* 2. Main Discovery Feed Area */}
       <section className="max-w-7xl mx-auto w-full px-gutter-mobile lg:px-margin-desktop py-space-md lg:py-space-xl">
         {/* Feed Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm mb-space-md">
