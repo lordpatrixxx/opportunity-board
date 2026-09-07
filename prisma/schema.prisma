@@ -1,0 +1,180 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  passwordHash  String
+  fullName      String
+  role          String         @default("USER") // USER, ADMIN, MODERATOR
+  avatarUrl     String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  profile       Profile?
+  opportunities Opportunity[]
+  bookmarks     Bookmark[]
+  notifications Notification[]
+  reports       Report[]
+  moderation    ModerationRecord[]
+}
+
+model Profile {
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  university          String?
+  degree              String?
+  fieldOfStudy        String?
+  graduationYear      Int?
+  bio                 String?
+  location            String?
+  phone               String?
+  linkedinUrl         String?
+  githubUrl           String?
+  portfolioUrl        String?
+  preferredWorkMode   String?  // Comma-separated: "remote,hybrid"
+  preferredLocations  String?
+  preferredCategories String?  // JSON or comma-separated category slugs
+  skills              String?  // Comma-separated: "Python,React,AI"
+  onboardingCompleted Boolean  @default(false)
+  updatedAt           DateTime @updatedAt
+
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Organization {
+  id          String        @id @default(cuid())
+  name        String        @unique
+  slug        String        @unique
+  logoUrl     String?
+  websiteUrl  String?
+  industry    String?
+  headquarter String?
+  isVerified  Boolean       @default(false)
+  createdAt   DateTime      @default(now())
+
+  opportunities Opportunity[]
+}
+
+model Category {
+  id          String        @id @default(cuid())
+  name        String        @unique
+  slug        String        @unique
+  icon        String
+  description String?
+  sortOrder   Int           @default(0)
+
+  opportunities Opportunity[]
+}
+
+model Opportunity {
+  id                  String        @id @default(cuid())
+  userId              String
+  organizationId      String
+  categoryId          String
+  title               String
+  opportunityType     String        // Internship, Hackathon, Fellowship, Workshop, Competition, Scholarship, Early Job, Conference
+  workplaceMode       String        @default("remote") // remote, onsite, hybrid
+  location            String?
+  compensationType    String?       // paid, stipend, prize, scholarship, unpaid
+  compensationAmount  String?
+  applicationDeadline DateTime?
+  startDate           DateTime?
+  endDate             DateTime?
+  duration            String?
+  shortSummary        String?
+  description         String
+  eligibility         String?
+  applicationUrl      String?
+  contactEmail        String?
+  status              String        @default("approved") // pending, approved, flagged, rejected, closed
+  isFeatured          Boolean       @default(false)
+  isUrgent            Boolean       @default(false)
+  viewCount           Int           @default(0)
+  bookmarkCount       Int           @default(0)
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  user                User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization        Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  category            Category      @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  tags                OpportunityTag[]
+  bookmarks           Bookmark[]
+  reports             Report[]
+  moderationRecords   ModerationRecord[]
+}
+
+model Tag {
+  id            String           @id @default(cuid())
+  name          String           @unique
+  slug          String           @unique
+
+  opportunities OpportunityTag[]
+}
+
+model OpportunityTag {
+  id            String      @id @default(cuid())
+  opportunityId String
+  tagId         String
+
+  opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  tag           Tag         @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([opportunityId, tagId])
+}
+
+model Bookmark {
+  id            String      @id @default(cuid())
+  userId        String
+  opportunityId String
+  createdAt     DateTime    @default(now())
+
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, opportunityId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // DEADLINE, MATCH, STATUS, SYSTEM
+  title     String
+  message   String
+  actionUrl String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Report {
+  id            String      @id @default(cuid())
+  reporterId    String
+  opportunityId String
+  reason        String
+  details       String?
+  status        String      @default("pending") // pending, reviewed, dismissed, actioned
+  createdAt     DateTime    @default(now())
+
+  reporter      User        @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+}
+
+model ModerationRecord {
+  id            String      @id @default(cuid())
+  opportunityId String
+  moderatorId   String
+  action        String      // APPROVE, REJECT, FLAG, REQUEST_CHANGES
+  notes         String?
+  createdAt     DateTime    @default(now())
+
+  opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  moderator     User        @relation(fields: [moderatorId], references: [id], onDelete: Cascade)
+}
