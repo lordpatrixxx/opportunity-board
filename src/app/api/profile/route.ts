@@ -43,10 +43,14 @@ export async function PUT(req: NextRequest) {
 
     // Update user basic info
     const fullName = (body.fullName || body.name)?.trim();
-    if (fullName) {
+    const role = body.role;
+    const userUpdates: any = {};
+    if (fullName) userUpdates.fullName = fullName;
+    if (role && (role === 'USER' || role === 'HOST')) userUpdates.role = role;
+    if (Object.keys(userUpdates).length > 0) {
       await db.user.update({
         where: { id: currentUser.id },
-        data: { fullName },
+        data: userUpdates,
       });
     }
 
@@ -55,9 +59,11 @@ export async function PUT(req: NextRequest) {
     const preferredWorkMode = body.preferredWorkMode !== undefined ? body.preferredWorkMode : body.workplacePreference;
     const preferredCategories = body.preferredCategories !== undefined
       ? body.preferredCategories
+      : Array.isArray(body.targetRoles)
+      ? body.targetRoles.join(',')
       : Array.isArray(body.interests)
       ? body.interests.join(',')
-      : body.interests;
+      : body.targetRoles || body.interests;
     const skills = body.skills !== undefined
       ? Array.isArray(body.skills)
         ? body.skills.join(',')

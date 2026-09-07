@@ -10,6 +10,7 @@ interface AuthContextType {
   savedCount: number;
   setSavedCount: React.Dispatch<React.SetStateAction<number>>;
   login: (email: string, password: string) => Promise<void>;
+  loginWithGoogle: (data: { email?: string; fullName?: string; name?: string; avatarUrl?: string; credential?: string; role?: string }) => Promise<{ isNewUser?: boolean }>;
   register: (data: { email: string; password: string; fullName: string; role?: string }) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -62,6 +63,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     router.refresh();
   };
 
+  const loginWithGoogle = async (googleData: { email?: string; fullName?: string; name?: string; avatarUrl?: string; credential?: string; role?: string }) => {
+    const res = await fetch('/api/auth/google', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(googleData),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || 'Google sign in failed');
+    }
+
+    setUser(data.user);
+    setSavedCount(data.savedCount || 0);
+    router.refresh();
+    return data;
+  };
+
   const register = async (formData: { email: string; password: string; fullName: string; role?: string }) => {
     const res = await fetch('/api/auth/register', {
       method: 'POST',
@@ -95,6 +114,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         savedCount,
         setSavedCount,
         login,
+        loginWithGoogle,
         register,
         logout,
         refreshUser,
