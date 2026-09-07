@@ -8,7 +8,7 @@ import { useToast } from '@/context/ToastContext';
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, refreshUser } = useAuth();
   const { showToast } = useToast();
 
   const [step, setStep] = useState(1);
@@ -74,6 +74,7 @@ export default function OnboardingPage() {
       });
 
       if (res.ok) {
+        await refreshUser();
         showToast('Preferences configured! Welcome aboard.', 'success');
         router.push('/onboarding/complete');
       } else {

@@ -10,7 +10,7 @@ interface AuthContextType {
   savedCount: number;
   setSavedCount: React.Dispatch<React.SetStateAction<number>>;
   login: (email: string, password: string) => Promise<void>;
-  register: (data: { email: string; password: string; fullName: string }) => Promise<void>;
+  register: (data: { email: string; password: string; fullName: string; role?: string }) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -62,7 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     router.refresh();
   };
 
-  const register = async (formData: { email: string; password: string; fullName: string }) => {
+  const register = async (formData: { email: string; password: string; fullName: string; role?: string }) => {
     const res = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

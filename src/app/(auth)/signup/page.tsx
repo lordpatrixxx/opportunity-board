@@ -34,7 +34,7 @@ export default function SignUpPage() {
     setErrorMsg('');
 
     try {
-      await register({ fullName: name, email, password });
+      await register({ fullName: name, email, password, role });
       showToast('Account created successfully! Set up your preferences.', 'success');
       router.push('/onboarding');
     } catch (err: any) {

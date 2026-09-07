@@ -145,14 +145,22 @@ export default function Navbar() {
                 className="flex items-center gap-space-2xs p-space-3xs rounded-full hover:bg-surface-container transition-all"
                 type="button"
               >
-                <img
-                  alt="Profile"
-                  className="w-8 h-8 rounded-full object-cover ring-1 ring-outline-variant"
-                  src={
-                    user.avatarUrl ||
-                    'https://lh3.googleusercontent.com/aida/AEtjO1VarjAWepmyJwNKy0i-25BhzT5iCd2kKRPP_E-D9dXZmwf0f9l6bcxCC826lNIG_AFFodp59djWCVrde4tncxizCfzIUmkeG9PWE7p9KVQDLrj3Q-qgbhjrYfpI2GOOi385BOCeDbHRk5O3gfW0XuIupUEwezgNSh1XFZhyoe3fZRJEgzBlZjXhSxGftDW43LzB0d7UR_SGQc__V3m4QNLDxqv8fsEBjNw5aT3Pvl9iD3un8CsJCSIpEPc'
-                  }
-                />
+                {user.avatarUrl ? (
+                  <img
+                    alt={user.fullName || user.name || 'User'}
+                    className="w-8 h-8 rounded-full object-cover ring-1 ring-outline-variant"
+                    src={user.avatarUrl}
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-primary/15 text-primary border border-primary/20 flex items-center justify-center font-bold text-xs shadow-xs">
+                    {((user.fullName || user.name || 'User')
+                      .split(' ')
+                      .map((n) => n[0])
+                      .join('')
+                      .substring(0, 2)
+                      .toUpperCase())}
+                  </div>
+                )}
                 <span className="material-symbols-outlined text-on-surface-variant text-[18px]">
                   {dropdownOpen ? 'expand_less' : 'expand_more'}
                 </span>
@@ -162,7 +170,7 @@ export default function Navbar() {
                 <div className="absolute right-0 mt-2 w-64 bg-surface-container-lowest rounded-xl shadow-xl border border-outline-variant/40 py-space-xs z-50 flex flex-col divide-y divide-surface-container">
                   <div className="px-space-md py-space-xs flex flex-col">
                     <span className="font-label-lg text-label-lg text-on-surface font-bold truncate">
-                      {user.fullName}
+                      {user.fullName || user.name}
                     </span>
                     <span className="font-body-sm text-body-sm text-on-surface-variant truncate">
                       {user.email}

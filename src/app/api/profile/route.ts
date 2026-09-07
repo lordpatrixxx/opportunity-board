@@ -14,7 +14,19 @@ export async function GET() {
       include: { profile: true },
     });
 
-    return NextResponse.json({ user: userWithProfile });
+    if (!userWithProfile) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    const { passwordHash: _, ...safeUser } = userWithProfile;
+
+    return NextResponse.json({
+      user: {
+        ...safeUser,
+        name: safeUser.fullName,
+      },
+      profile: safeUser.profile,
+    });
   } catch (err) {
     return NextResponse.json({ error: 'Failed to fetch profile' }, { status: 500 });
   }
@@ -30,46 +42,82 @@ export async function PUT(req: NextRequest) {
     const body = await req.json();
 
     // Update user basic info
-    if (body.fullName) {
+    const fullName = (body.fullName || body.name)?.trim();
+    if (fullName) {
       await db.user.update({
         where: { id: currentUser.id },
-        data: { fullName: body.fullName },
+        data: { fullName },
       });
     }
+
+    // Process fields with aliases
+    const university = body.university !== undefined ? body.university : body.education;
+    const preferredWorkMode = body.preferredWorkMode !== undefined ? body.preferredWorkMode : body.workplacePreference;
+    const preferredCategories = body.preferredCategories !== undefined
+      ? body.preferredCategories
+      : Array.isArray(body.interests)
+      ? body.interests.join(',')
+      : body.interests;
+    const skills = body.skills !== undefined
+      ? Array.isArray(body.skills)
+        ? body.skills.join(',')
+        : body.skills
+      : undefined;
+    const graduationYear = body.graduationYear !== undefined
+      ? (body.graduationYear ? parseInt(body.graduationYear.toString(), 10) : null)
+      : undefined;
 
     // Upsert profile info
     const profile = await db.profile.upsert({
       where: { userId: currentUser.id },
       create: {
         userId: currentUser.id,
-        university: body.university || null,
+        university: university || null,
         degree: body.degree || null,
         fieldOfStudy: body.fieldOfStudy || null,
-        graduationYear: body.graduationYear ? parseInt(body.graduationYear, 10) : null,
+        graduationYear: graduationYear || null,
         bio: body.bio || null,
         location: body.location || null,
         phone: body.phone || null,
-        preferredWorkMode: body.preferredWorkMode || null,
-        preferredCategories: body.preferredCategories || null,
-        skills: body.skills || null,
+        linkedinUrl: body.linkedinUrl || null,
+        githubUrl: body.githubUrl || null,
+        portfolioUrl: body.portfolioUrl || null,
+        preferredWorkMode: preferredWorkMode || null,
+        preferredCategories: preferredCategories || null,
+        skills: skills || null,
+        onboardingCompleted: true,
       },
       update: {
-        university: body.university !== undefined ? body.university : undefined,
+        university: university !== undefined ? university : undefined,
         degree: body.degree !== undefined ? body.degree : undefined,
         fieldOfStudy: body.fieldOfStudy !== undefined ? body.fieldOfStudy : undefined,
-        graduationYear: body.graduationYear !== undefined ? parseInt(body.graduationYear, 10) : undefined,
+        graduationYear: graduationYear !== undefined ? graduationYear : undefined,
         bio: body.bio !== undefined ? body.bio : undefined,
         location: body.location !== undefined ? body.location : undefined,
         phone: body.phone !== undefined ? body.phone : undefined,
-        preferredWorkMode: body.preferredWorkMode !== undefined ? body.preferredWorkMode : undefined,
-        preferredCategories: body.preferredCategories !== undefined ? body.preferredCategories : undefined,
-        skills: body.skills !== undefined ? body.skills : undefined,
+        linkedinUrl: body.linkedinUrl !== undefined ? body.linkedinUrl : undefined,
+        githubUrl: body.githubUrl !== undefined ? body.githubUrl : undefined,
+        portfolioUrl: body.portfolioUrl !== undefined ? body.portfolioUrl : undefined,
+        preferredWorkMode: preferredWorkMode !== undefined ? preferredWorkMode : undefined,
+        preferredCategories: preferredCategories !== undefined ? preferredCategories : undefined,
+        skills: skills !== undefined ? skills : undefined,
       },
     });
+
+    const updatedUser = await db.user.findUnique({
+      where: { id: currentUser.id },
+      include: { profile: true },
+    });
+
+    const { passwordHash: _, ...safeUpdatedUser } = updatedUser!;
 
     return NextResponse.json({
       message: 'Profile preferences saved successfully',
       profile,
+      user: {
+        ...safeUpdatedUser,
+        name: safeUpdatedUser.fullName,
+      },
     });
   } catch (err: any) {
     console.error('Update profile error:', err);

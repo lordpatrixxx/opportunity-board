@@ -58,7 +58,10 @@ export async function getCurrentUser() {
     if (!user) return null;
 
     const { passwordHash: _, ...safeUser } = user;
-    return safeUser;
+    return {
+      ...safeUser,
+      name: user.fullName,
+    };
   } catch (error) {
     return null;
   }

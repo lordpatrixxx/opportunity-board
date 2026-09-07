@@ -7,6 +7,13 @@ const registerSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   fullName: z.string().min(2, 'Full name must be at least 2 characters'),
+  role: z.string().optional(),
+  university: z.string().optional(),
+  degree: z.string().optional(),
+  fieldOfStudy: z.string().optional(),
+  graduationYear: z.union([z.string(), z.number()]).optional(),
+  location: z.string().optional(),
+  bio: z.string().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -21,9 +28,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { email, password, fullName } = result.data;
+    const {
+      email,
+      password,
+      fullName,
+      role,
+      university,
+      degree,
+      fieldOfStudy,
+      graduationYear,
+      location,
+      bio,
+    } = result.data;
 
-    // Check existing
+    // Check existing user
     const existing = await db.user.findUnique({
       where: { email: email.toLowerCase() },
     });
@@ -42,10 +60,15 @@ export async function POST(req: NextRequest) {
         email: email.toLowerCase(),
         passwordHash,
         fullName,
-        role: 'USER',
+        role: role === 'HOST' ? 'HOST' : 'USER',
         profile: {
           create: {
-            university: 'Stanford University',
+            university: university || null,
+            degree: degree || null,
+            fieldOfStudy: fieldOfStudy || null,
+            graduationYear: graduationYear ? parseInt(graduationYear.toString(), 10) : null,
+            location: location || null,
+            bio: bio || null,
             onboardingCompleted: false,
           },
         },
@@ -61,9 +84,13 @@ export async function POST(req: NextRequest) {
     });
 
     const { passwordHash: _, ...safeUser } = user;
+    const responseUser = {
+      ...safeUser,
+      name: user.fullName,
+    };
 
     const response = NextResponse.json(
-      { message: 'Registration successful', user: safeUser },
+      { message: 'Registration successful', user: responseUser },
       { status: 201 }
     );
 

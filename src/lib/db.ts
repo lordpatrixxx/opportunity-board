@@ -2,8 +2,8 @@ import { PrismaClient } from '@prisma/client';
 import fs from 'fs';
 import path from 'path';
 
-// If running in Vercel serverless environment with SQLite, copy bundled dev.db to /tmp so write operations succeed
-if (process.env.VERCEL) {
+// Only if running with SQLite file: in Vercel serverless environment, copy bundled dev.db
+if (process.env.DATABASE_URL?.startsWith('file:') && process.env.VERCEL) {
   try {
     const tmpDbPath = path.join('/tmp', 'dev.db');
     if (!fs.existsSync(tmpDbPath)) {
@@ -25,11 +25,6 @@ const globalForPrisma = globalThis as unknown as {
 export const db =
   globalForPrisma.prisma ??
   new PrismaClient({
-    datasources: {
-      db: {
-        url: process.env.DATABASE_URL,
-      },
-    },
     log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
   });
 

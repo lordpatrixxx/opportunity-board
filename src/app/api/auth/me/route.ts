@@ -13,7 +13,14 @@ export async function GET() {
       where: { userId: user.id },
     });
 
-    return NextResponse.json({ user, savedCount });
+    return NextResponse.json({
+      user: {
+        ...user,
+        name: user.fullName || (user as any).name,
+      },
+      profile: user.profile,
+      savedCount,
+    });
   } catch (err) {
     return NextResponse.json({ user: null, savedCount: 0 }, { status: 500 });
   }

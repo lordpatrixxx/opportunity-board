@@ -47,4 +47,5 @@ prisma/dev.db-journal
 .vscode/
 *.swp
 *.swo
+scripts/
 !.env.example

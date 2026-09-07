@@ -7,7 +7,7 @@ import { useToast } from '@/context/ToastContext';
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { user, loading: authLoading, logout } = useAuth();
+  const { user, loading: authLoading, logout, refreshUser } = useAuth();
   const { showToast } = useToast();
 
   const [loading, setLoading] = useState(true);
@@ -34,16 +34,16 @@ export default function ProfilePage() {
         const res = await fetch('/api/profile');
         if (res.ok) {
           const data = await res.json();
-          const p = data.profile;
-          setName(data.user.name || '');
+          const p = data.profile || data.user?.profile;
+          setName(data.user?.fullName || data.user?.name || user.fullName || (user as any).name || '');
           if (p) {
             setBio(p.bio || '');
-            setEducation(p.education || '');
+            setEducation(p.education || p.university || '');
             setGraduationYear(p.graduationYear ? p.graduationYear.toString() : '');
             setLocation(p.location || '');
-            setSkills(Array.isArray(p.skills) ? p.skills.join(', ') : '');
-            setInterests(Array.isArray(p.interests) ? p.interests.join(', ') : '');
-            setWorkplacePreference(p.workplacePreference || 'remote');
+            setSkills(Array.isArray(p.skills) ? p.skills.join(', ') : (p.skills || ''));
+            setInterests(Array.isArray(p.interests) ? p.interests.join(', ') : (p.preferredCategories || p.interests || ''));
+            setWorkplacePreference(p.preferredWorkMode || p.workplacePreference || 'remote');
             setExperienceLevel(p.experienceLevel || 'intermediate');
             setNotifyDeadlines(p.notifyDeadlines ?? true);
             setNotifyOpportunities(p.notifyOpportunities ?? true);
@@ -102,6 +102,7 @@ export default function ProfilePage() {
 
       const data = await res.json();
       if (res.ok) {
+        await refreshUser();
         showToast('Profile and preferences updated successfully!', 'success');
       } else {
         showToast(data.error || 'Failed to update profile', 'error');
@@ -127,18 +128,27 @@ export default function ProfilePage() {
     );
   }
 
+  const userDisplayName = user?.fullName || user?.name || name || 'User';
+  const userInitials = userDisplayName
+    .split(' ')
+    .filter(Boolean)
+    .map((n: string) => n[0])
+    .join('')
+    .substring(0, 2)
+    .toUpperCase() || 'U';
+
   return (
     <div className="max-w-4xl mx-auto px-gutter-mobile lg:px-margin-desktop py-space-lg">
       {/* Header & User Hero Card */}
       <div className="bg-surface-container-lowest p-space-md sm:p-space-lg rounded-3xl border border-outline-variant/30 shadow-xs mb-space-lg flex flex-col sm:flex-row sm:items-center justify-between gap-space-md">
         <div className="flex items-center gap-space-md">
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-primary to-primary-container text-white flex items-center justify-center font-black text-2xl shadow-xs">
-            {user?.name?.substring(0, 2).toUpperCase() || 'US'}
+            {userInitials}
           </div>
           <div>
             <div className="flex items-center gap-2">
               <h1 className="font-headline-sm text-2xl font-black text-on-surface">
-                {user?.name}
+                {userDisplayName}
               </h1>
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-primary-fixed text-on-primary-fixed">
                 {user?.role}
