@@ -10,7 +10,7 @@ interface AuthContextType {
   savedCount: number;
   setSavedCount: React.Dispatch<React.SetStateAction<number>>;
   login: (email: string, password: string) => Promise<void>;
-  loginWithGoogle: (data: { email?: string; fullName?: string; name?: string; avatarUrl?: string; credential?: string; role?: string }) => Promise<{ isNewUser?: boolean }>;
+  loginWithGoogle: (data: { email?: string; fullName?: string; name?: string; avatarUrl?: string | null; credential?: string; accessToken?: string; role?: string }) => Promise<{ isNewUser?: boolean }>;
   register: (data: { email: string; password: string; fullName: string; role?: string }) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -63,7 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     router.refresh();
   };
 
-  const loginWithGoogle = async (googleData: { email?: string; fullName?: string; name?: string; avatarUrl?: string; credential?: string; role?: string }) => {
+  const loginWithGoogle = async (googleData: { email?: string; fullName?: string; name?: string; avatarUrl?: string | null; credential?: string; accessToken?: string; role?: string }) => {
     const res = await fetch('/api/auth/google', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

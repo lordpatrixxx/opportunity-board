@@ -20,12 +20,29 @@ export async function POST(req: NextRequest) {
       } catch (e) {
         return NextResponse.json({ error: 'Invalid Google credential token' }, { status: 400 });
       }
-    } else if (body.email) {
+    } else if (body.accessToken) {
+      // Direct Google OAuth access token
+      try {
+        const googleRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: `Bearer ${body.accessToken}` },
+        });
+        if (googleRes.ok) {
+          const gData = await googleRes.json();
+          email = gData.email;
+          fullName = gData.name || gData.given_name || (email ? email.split('@')[0] : '');
+          avatarUrl = gData.picture || null;
+        }
+      } catch (err) {
+        console.warn('Error fetching Google userinfo with access token:', err);
+      }
+    }
+
+    if (!email && body.email) {
       email = body.email;
       fullName = body.fullName || body.name || email.split('@')[0];
-      avatarUrl = body.avatarUrl || null;
-    } else {
-      return NextResponse.json({ error: 'Google credential or email is required' }, { status: 400 });
+      avatarUrl = body.avatarUrl || avatarUrl || null;
+    } else if (!email) {
+      return NextResponse.json({ error: 'Google credential, access token or email is required' }, { status: 400 });
     }
 
     if (!email || !email.includes('@')) {

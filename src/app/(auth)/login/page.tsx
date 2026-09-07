@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
+import { triggerGoogleSignIn } from '@/lib/google-auth';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -16,10 +17,44 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [showGoogleModal, setShowGoogleModal] = useState(false);
-  const [googleEmail, setGoogleEmail] = useState('');
-  const [googleName, setGoogleName] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Handle OAuth redirect token in hash if redirect flow was triggered
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.hash.includes('access_token')) {
+      const params = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+      const token = params.get('access_token');
+      if (token) {
+        window.history.replaceState(null, '', window.location.pathname);
+        setGoogleLoading(true);
+        fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+          .then((res) => res.json())
+          .then(async (info) => {
+            if (info.email) {
+              const res = await loginWithGoogle({
+                email: info.email,
+                fullName: info.name || info.given_name || info.email.split('@')[0],
+                avatarUrl: info.picture,
+                accessToken: token,
+              });
+              showToast(`Welcome, ${info.name || 'User'}! Signed in with Google.`, 'success');
+              if (res?.isNewUser) {
+                router.push('/onboarding');
+              } else {
+                router.push('/');
+              }
+            }
+          })
+          .catch((err) => {
+            console.error('Failed to get userinfo from hash token:', err);
+            showToast('Failed to complete Google authentication', 'error');
+          })
+          .finally(() => setGoogleLoading(false));
+      }
+    }
+  }, [loginWithGoogle, router, showToast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,65 +78,30 @@ export default function LoginPage() {
     }
   };
 
-  const handleGoogleSignInClick = () => {
-    // Check if Google GIS is available and configured
-    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
-    if (typeof window !== 'undefined' && (window as any).google?.accounts?.id && clientId) {
-      setGoogleLoading(true);
-      try {
-        (window as any).google.accounts.id.initialize({
-          client_id: clientId,
-          callback: async (response: any) => {
-            try {
-              const res = await loginWithGoogle({ credential: response.credential });
-              showToast('Signed in with Google!', 'success');
-              if (res?.isNewUser) {
-                router.push('/onboarding');
-              } else {
-                router.push('/');
-              }
-            } catch (err: any) {
-              showToast(err.message || 'Google sign in failed', 'error');
-            } finally {
-              setGoogleLoading(false);
-            }
-          },
-        });
-        (window as any).google.accounts.id.prompt();
-        return;
-      } catch (err) {
-        console.warn('GIS error, falling back to Google account modal', err);
-      }
-    }
-    // Standard Google sign-in modal
-    setShowGoogleModal(true);
-  };
-
-  const handleGoogleModalSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!googleEmail || !googleEmail.includes('@')) {
-      setErrorMsg('Please enter a valid Google email address.');
-      return;
-    }
-
+  const handleGoogleSignInClick = async () => {
     setGoogleLoading(true);
     setErrorMsg('');
 
     try {
+      // Direct Google Account Auth - fetches email, name, and picture directly from Google
+      const profile = await triggerGoogleSignIn();
       const res = await loginWithGoogle({
-        email: googleEmail,
-        fullName: googleName.trim() || googleEmail.split('@')[0],
+        email: profile.email,
+        fullName: profile.fullName,
+        avatarUrl: profile.avatarUrl,
+        accessToken: profile.accessToken,
+        credential: profile.credential,
       });
-      setShowGoogleModal(false);
-      showToast('Successfully signed in with Google!', 'success');
+
+      showToast(`Welcome, ${profile.fullName}! Signed in with Google.`, 'success');
       if (res?.isNewUser) {
         router.push('/onboarding');
       } else {
         router.push('/');
       }
     } catch (err: any) {
-      setErrorMsg(err.message || 'Google authentication failed.');
-      showToast(err.message || 'Google sign in failed', 'error');
+      console.error('Google Sign-In error:', err);
+      showToast(err.message || 'Google sign-in was cancelled or failed.', 'error');
     } finally {
       setGoogleLoading(false);
     }
@@ -124,7 +124,7 @@ export default function LoginPage() {
         type="button"
         disabled={googleLoading}
         onClick={handleGoogleSignInClick}
-        className="w-full py-3 px-4 rounded-xl border border-outline-variant/40 bg-surface-container-low hover:bg-surface-container text-on-surface font-label-lg text-label-lg font-bold shadow-xs hover:shadow-sm transition-all flex items-center justify-center gap-3 active:scale-[0.99] disabled:opacity-50"
+        className="w-full py-3 px-4 rounded-xl border border-outline-variant/40 bg-surface-container-low hover:bg-surface-container text-on-surface font-label-lg text-label-lg font-bold shadow-xs hover:shadow-sm transition-all flex items-center justify-center gap-3 active:scale-[0.99] disabled:opacity-50 cursor-pointer"
       >
         {googleLoading ? (
           <span className="inline-block w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
@@ -148,7 +148,7 @@ export default function LoginPage() {
             />
           </svg>
         )}
-        <span>Continue with Google</span>
+        <span>{googleLoading ? 'Connecting to Google...' : 'Continue with Google'}</span>
       </button>
 
       {/* Divider */}
@@ -227,7 +227,7 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={loading}
-          className="mt-space-xs w-full py-3 rounded-xl bg-primary text-white font-label-lg text-label-lg font-bold shadow-sm hover:bg-primary/90 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-space-2xs"
+          className="mt-space-xs w-full py-3 rounded-xl bg-primary text-white font-label-lg text-label-lg font-bold shadow-sm hover:bg-primary/90 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-space-2xs cursor-pointer"
         >
           {loading ? (
             <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -249,100 +249,6 @@ export default function LoginPage() {
           </Link>
         </p>
       </div>
-
-      {/* Google Account Modal */}
-      {showGoogleModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-surface-container-lowest max-w-sm w-full p-6 rounded-3xl border border-outline-variant/40 shadow-2xl flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <svg className="w-5 h-5" viewBox="0 0 24 24">
-                  <path
-                    fill="#4285F4"
-                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                  />
-                  <path
-                    fill="#34A853"
-                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                  />
-                  <path
-                    fill="#FBBC05"
-                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                  />
-                  <path
-                    fill="#EA4335"
-                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                  />
-                </svg>
-                <h3 className="font-title-md text-title-md font-bold text-on-surface">
-                  Sign in with Google
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowGoogleModal(false)}
-                className="text-on-surface-variant hover:text-on-surface"
-              >
-                <span className="material-symbols-outlined text-[20px]">close</span>
-              </button>
-            </div>
-
-            <p className="text-xs text-on-surface-variant">
-              Enter your Google Account email to authenticate seamlessly and synchronize your persistent profile.
-            </p>
-
-            <form onSubmit={handleGoogleModalSubmit} className="flex flex-col gap-3">
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-bold text-on-surface">
-                  Google Email Address
-                </label>
-                <input
-                  type="email"
-                  required
-                  value={googleEmail}
-                  onChange={(e) => setGoogleEmail(e.target.value)}
-                  placeholder="name@gmail.com"
-                  className="w-full px-3 py-2 rounded-xl bg-surface-container-low border border-outline-variant/40 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-bold text-on-surface">
-                  Your Full Name (Optional)
-                </label>
-                <input
-                  type="text"
-                  value={googleName}
-                  onChange={(e) => setGoogleName(e.target.value)}
-                  placeholder="e.g. Elena Rostova"
-                  className="w-full px-3 py-2 rounded-xl bg-surface-container-low border border-outline-variant/40 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-2 mt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowGoogleModal(false)}
-                  className="px-3 py-2 rounded-xl text-xs font-bold text-on-surface-variant hover:bg-surface-container"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={googleLoading}
-                  className="px-4 py-2 rounded-xl bg-primary text-white font-bold text-xs shadow-sm hover:bg-primary/90 flex items-center gap-1.5"
-                >
-                  {googleLoading ? (
-                    <span className="inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <span>Authorize & Sign In</span>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
